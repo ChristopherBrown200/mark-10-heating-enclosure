@@ -34,6 +34,8 @@ AccelStepper myStepper(motorInterfaceType, stepPin, dirPin);
 const double MaxSpeed = 70.0;
 double Speed = 10.0; // TODO: Set as min speed
 bool returnEnabled = false;
+unsigned long timeA = 0;
+unsigned long timeB = 0;
 
 // Define encoder Pins
 #define CLK_PIN 27
@@ -91,13 +93,14 @@ void setup() {
     CLK_state = digitalRead(CLK_PIN);
     if (CLK_state != prev_CLK_state){
       if (digitalRead(DT_PIN) == HIGH){
-        // Move UP
+        myStepper.move(200);
         direction = DIRECTION_CCW;
       }
       else{
-        // Move Down
+        myStepper.move(-200);
         direction = DIRECTION_CW;
       }
+      myStepper.run();
       prev_CLK_state = CLK_state;
     }
   }
@@ -183,9 +186,20 @@ void setup() {
   while (digitalRead(SW_PIN) == 1) maintainTemp();
 }
 
-void loop() {
-  
+// Need for reset after test
+void(* resetFunc) (void) = 0;
 
+void loop() {
+  if (digitalRead(SW_PIN) == 0){
+    digitalWrite(RELAY_PIN, LOW);
+    if (returnEnabled){
+      returnHome();
+    }
+    resetFunc();
+  }
+  maintainTemp();
+
+  timeA = millis();
 }
 
 void maintainTemp(){
@@ -197,6 +211,10 @@ void maintainTemp(){
   else if (actualTemp < goalTemp - 1.0){
     digitalWrite(RELAY_PIN, LOW);
   }
+}
+
+void returnHome(){
+  // TODO
 }
 
 void setDisplay(char line1[], char line2[])
