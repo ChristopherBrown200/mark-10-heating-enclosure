@@ -32,10 +32,12 @@ AccelStepper myStepper(motorInterfaceType, stepPin, dirPin);
 
 // Motor Varibles
 const double MaxSpeed = 70.0;
-double Speed = 10.0; // TODO: Set as min speed
+double SpeedInMin = 10.0; // TODO: Set as min speed
+double SpeedInSec = 10.0;
 bool returnEnabled = false;
-unsigned long timeA = 0;
-unsigned long timeB = 0;
+long stepsRotated = 0;
+double disTraveled = 0.0;
+unsigned long startTime = 0;
 
 // Define encoder Pins
 #define CLK_PIN 27
@@ -93,12 +95,10 @@ void setup() {
     CLK_state = digitalRead(CLK_PIN);
     if (CLK_state != prev_CLK_state){
       if (digitalRead(DT_PIN) == HIGH){
-        myStepper.move(200);
-        direction = DIRECTION_CCW;
+        myStepper.move(200); //TODO: direction and amount
       }
       else{
         myStepper.move(-200);
-        direction = DIRECTION_CW;
       }
       myStepper.run();
       prev_CLK_state = CLK_state;
@@ -111,26 +111,27 @@ void setup() {
     CLK_state = digitalRead(CLK_PIN);
     if (CLK_state != prev_CLK_state){
       if (digitalRead(DT_PIN) == HIGH){
-        if (Speed < MaxSpeed){
-          Speed += 0.1;
+        if (SpeedInMin < MaxSpeed){
+          SpeedInMin += 0.1;
         }
-        direction = DIRECTION_CCW;
       }
       else{
-        if (Speed > 0){
-          Speed -= 0.1;
+        if (SpeedInMin > 0){
+          SpeedInMin -= 0.1;
         }
-        direction = DIRECTION_CW;
       }
       prev_CLK_state = CLK_state;
 
       lcd.setCursor(1, 6);
       lcd.print("          ");
       lcd.setCursor(1, 6);
-      lcd.print(Speed);
+      lcd.print(SpeedInMin);
       lcd.print(" in/min");
     }
   }
+
+  //Converts speed tp in/sec
+  SpeedInSec = SpeedInMin / 60.0;
 
   setDisplay("Return Home?", "N");
   while (digitalRead(SW_PIN) == 1){
@@ -184,6 +185,7 @@ void setup() {
 
   setDisplay("Ready Press to", "Start");
   while (digitalRead(SW_PIN) == 1) maintainTemp();
+  startTime = millis();
 }
 
 // Need for reset after test
@@ -199,7 +201,8 @@ void loop() {
   }
   maintainTemp();
 
-  timeA = millis();
+  long timePassed = millis() - startTime;
+  maintainExpansion(timePassed);
 }
 
 void maintainTemp(){
@@ -213,8 +216,18 @@ void maintainTemp(){
   }
 }
 
+void maintainExpansion(long msPassed){
+  double secPassed = msPassed / 1000.0;
+  double correctDis = speedInSec * secPassed;
+  if (correctDis > disTraveled){
+    myStepper.move(200); //TODO: Amount
+    disTraveles += 0.0; //TODO: FindAmount
+    stepsRotated += 200; //TODO: Match Amount
+  }
+}
+
 void returnHome(){
-  // TODO
+  myStepper.move(-stepsRotated); //TODO: Direction
 }
 
 void setDisplay(char line1[], char line2[])
