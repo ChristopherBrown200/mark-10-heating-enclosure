@@ -1,3 +1,10 @@
+/*
+Project: Controlled Heat Enclosure for the Mark-10 F1505-IM
+Client: Dr. Alireza Sarvestani
+Author: Christopher Brown
+Date: April 7, 2025
+*/
+
 // Included Libraries
 #include <AccelStepper.h>
 #include "Adafruit_MAX31855.h"
@@ -13,7 +20,7 @@
 Adafruit_MAX31855 thermocouple(MAXCLK, MAXCS, MAXDO);
 
 double actualTemp = 0.0;
-double goalTemp = 70.0;
+int goalTemp = 70;
 const double maxTemp = 150.0; //TODO: Find Actual Max
 
 
@@ -32,17 +39,17 @@ AccelStepper myStepper(motorInterfaceType, stepPin, dirPin);
 
 // Motor Varibles
 const double MaxSpeed = 70.0;
-double SpeedInMin = 10.0; // TODO: Set as min speed
-double SpeedInSec = 10.0;
+double speedInMin = 10.0; // TODO: Set as min speed
+double speedInSec = 10.0;
 bool returnEnabled = false;
 long stepsRotated = 0;
 double disTraveled = 0.0;
 unsigned long startTime = 0;
 
 // Define encoder Pins
-#define CLK_PIN 27
-#define DT_PIN  26
-#define SW_PIN  25
+#define CLK 2
+#define DT 3
+#define SW 4
 
 // Encoder direction definitions
 #define DIRECTION_CW  0
@@ -50,11 +57,11 @@ unsigned long startTime = 0;
 
 // Encoder Varibles
 int direction = DIRECTION_CW;
-int CLK_state;
-int prev_CLK_state;
+int CLKstate;
+int prevCLKstate;
 
 // Relay Pin
-#define RELAY_PIN 99
+#define RELAY 99
 
 
 // Boot squence and Pretest Setup ======================================================
@@ -63,8 +70,10 @@ void setup() {
 
   while (!Serial) delay(1);
 
+  Serial.println("Started");
+
   // Relay Setup
-  pinMode(RELAY_PIN, OUTPUT);
+  pinMode(RELAY, OUTPUT);
 
   // Setup Display
   lcd.init();
@@ -77,10 +86,10 @@ void setup() {
   myStepper.setSpeed(200);
 
   // Setup Encoder
-  pinMode(CLK_PIN, INPUT);
-  pinMode(DT_PIN, INPUT);
-  pinMode(SW_PIN, INPUT);
-  prev_CLK_state = digitalRead(CLK_PIN);
+  pinMode(CLK, INPUT);
+  pinMode(DT, INPUT);
+  pinMode(SW, INPUT_PULLUP);
+  prevCLKstate = digitalRead(CLK);
 
   // Setup Thermocouple
   if (!thermocouple.begin()){
@@ -91,128 +100,182 @@ void setup() {
 
   // Set the starting height
   setDisplay("Set Starting", "Height.");
-  while (digitalRead(SW_PIN) == 1){
-    CLK_state = digitalRead(CLK_PIN);
-    if (CLK_state != prev_CLK_state){
-      if (digitalRead(DT_PIN) == HIGH){
+  while (digitalRead(SW) == 1){
+    CLKstate = digitalRead(CLK);
+    if (CLKstate != prevCLKstate && CLKstate == 1){
+      if (digitalRead(DT) == CLKstate){
+        Serial.println("Moved UP");
         myStepper.move(200); //TODO: direction and amount
       }
       else{
+        Serial.println("Moved Down");
         myStepper.move(-200);
       }
       myStepper.run();
-      prev_CLK_state = CLK_state;
     }
+    prevCLKstate = CLKstate;
+    delay(1);
   }
+  Serial.println("Starting Height Set.");
+  delay(500);
 
   // Set the Expansion Rate
   setDisplay("Set Expansion", "Speed:");
-  while (digitalRead(SW_PIN) == 1){
-    CLK_state = digitalRead(CLK_PIN);
-    if (CLK_state != prev_CLK_state){
-      if (digitalRead(DT_PIN) == HIGH){
-        if (SpeedInMin < MaxSpeed){
-          SpeedInMin += 0.1;
+  lcd.setCursor(1, 6);
+  lcd.print("          ");
+  lcd.setCursor(1, 6);
+  lcd.print(speedInMin);
+  lcd.print(" in/min");
+  Serial.print(speedInMin);
+  Serial.println(" in/min");
+
+  while (digitalRead(SW) == 1){
+    CLKstate = digitalRead(CLK);
+    if (CLKstate != prevCLKstate && CLKstate == 1){
+      if (digitalRead(DT) == CLKstate){
+        if (speedInMin < MaxSpeed){
+          speedInMin += 0.1;
         }
       }
       else{
-        if (SpeedInMin > 0){
-          SpeedInMin -= 0.1;
+        if (speedInMin > 0){
+          speedInMin -= 0.1;
         }
       }
-      prev_CLK_state = CLK_state;
 
       lcd.setCursor(1, 6);
       lcd.print("          ");
       lcd.setCursor(1, 6);
-      lcd.print(SpeedInMin);
+      lcd.print(speedInMin);
       lcd.print(" in/min");
+      Serial.print(speedInMin);
+      Serial.println(" in/min");
     }
+    prevCLKstate = CLKstate;
+    delay(1);
   }
 
-  //Converts speed tp in/sec
-  SpeedInSec = SpeedInMin / 60.0;
+  Serial.print("Expansion Rate Set: ");
+  Serial.print(speedInMin);
+  Serial.println(" in/min");
+  delay(500);
 
-  setDisplay("Return Home?", "N");
-  while (digitalRead(SW_PIN) == 1){
-    CLK_state = digitalRead(CLK_PIN);
-    if (CLK_state != prev_CLK_state){
+  // //Converts speed tp in/sec
+  speedInSec = speedInMin / 60.0;
+
+  setDisplay("Return Home?", "No");
+  while (digitalRead(SW) == 1){
+    CLKstate = digitalRead(CLK);
+    if (CLKstate != prevCLKstate && CLKstate == 1){
       returnEnabled = !returnEnabled;
       if (returnEnabled){
-        setDisplay("Return Home?", "Y");
+        setDisplay("Return Home?", "Yes");
       }
       else {
-        setDisplay("Return Home?", "N");
+        setDisplay("Return Home?", "No");
       }
     }
+    prevCLKstate = CLKstate;
+    delay(1);
   }
+  Serial.print("Return Home: ");
+  Serial.println(returnEnabled);
+  delay(500);
 
-  // Prompt the user to close the enclosure
+  // // Prompt the user to close the enclosure
   setDisplay("Please ensure", "door is closed.");
-  while (digitalRead(SW_PIN) == 1) delay(1);
+  while (digitalRead(SW) == 1) delay(1);
 
-  // Get the desired tempeture
+  Serial.println("Door Close Confirmed.");
+  delay(500);
+
+  // // Get the desired tempeture
   setDisplay("Tempeture", "");
-  while (digitalRead(SW_PIN) == 1){
-    CLK_state = digitalRead(CLK_PIN);
-    if (CLK_state != prev_CLK_state){
-      if (digitalRead(DT_PIN) == HIGH){
+  while (digitalRead(SW) == 1){
+    CLKstate = digitalRead(CLK);
+    if (CLKstate != prevCLKstate && CLKstate == 1){
+      if (digitalRead(DT) == CLKstate){
         if (goalTemp < maxTemp){
-          goalTemp += 1.0;
+          goalTemp += 1;
         }
         direction = DIRECTION_CCW;
       }
       else {
-        if (goalTemp > 0){
-          goalTemp -= 1.0;
+        if (goalTemp > 15){
+          goalTemp -= 1;
         }
         direction = DIRECTION_CW;
       }
-      prev_CLK_state = CLK_state;
 
       lcd.setCursor(1, 0);
       lcd.print(goalTemp);
       lcd.print("C");
+
+      Serial.print((int)goalTemp);
+      Serial.println("C");
     }
+    prevCLKstate = CLKstate;
   }
+  Serial.print("Tempeture Set: ");
+  Serial.print(goalTemp);
+  Serial.println("C");
+  delay(500);
+
 
   // Wait for enclosure to reach tempeture
   setDisplay("Heating", "Chamber");
-  digitalWrite(RELAY_PIN, HIGH);
+  digitalWrite(RELAY, HIGH);
   do{
     actualTemp = thermocouple.readCelsius();
+
+    // if (isnan(actualTemp)){
+    //   setDisplay("Thermocouple", "Error!");
+    //   while(1) delay(1000);
+    // }
+
+    Serial.print("Heating: ");
+    Serial.print(actualTemp);
+    Serial.println("C");
   } while (actualTemp < goalTemp);
 
-  setDisplay("Ready Press to", "Start");
-  while (digitalRead(SW_PIN) == 1) maintainTemp();
+  setDisplay("Ready, Press to", "Start");
+  while (digitalRead(SW) == 1) maintainTemp();
   startTime = millis();
+  Serial.print("Test Started.");
+  delay(500);
 }
 
 // Need for reset after test
 void(* resetFunc) (void) = 0;
 
 void loop() {
-  if (digitalRead(SW_PIN) == 0){
-    digitalWrite(RELAY_PIN, LOW);
+  if (digitalRead(SW) == 0){
+    digitalWrite(RELAY, LOW);
+    Serial.println("Test Stopped.");
+
     if (returnEnabled){
       returnHome();
     }
+
     resetFunc();
   }
   maintainTemp();
 
   long timePassed = millis() - startTime;
   maintainExpansion(timePassed);
+  delay(1);
 }
 
 void maintainTemp(){
   actualTemp = thermocouple.readCelsius();
 
   if (actualTemp >= goalTemp + 2.5){
-    digitalWrite(RELAY_PIN, HIGH);
+    digitalWrite(RELAY, HIGH);
+    Serial.println("Heating turned on.");
   }
   else if (actualTemp < goalTemp - 1.0){
-    digitalWrite(RELAY_PIN, LOW);
+    digitalWrite(RELAY, LOW);
+    Serial.println("Heating turned off.");
   }
 }
 
@@ -221,13 +284,17 @@ void maintainExpansion(long msPassed){
   double correctDis = speedInSec * secPassed;
   if (correctDis > disTraveled){
     myStepper.move(200); //TODO: Amount
-    disTraveles += 0.0; //TODO: FindAmount
+    myStepper.run();
+    disTraveled += 0.0; //TODO: FindAmount
     stepsRotated += 200; //TODO: Match Amount
   }
 }
 
 void returnHome(){
+  setDisplay("Returning", "Home");
   myStepper.move(-stepsRotated); //TODO: Direction
+  myStepper.run();
+  while(myStepper.distanceToGo() != 0) delay(1);
 }
 
 void setDisplay(char line1[], char line2[])
@@ -237,23 +304,12 @@ void setDisplay(char line1[], char line2[])
   lcd.print(line1);
   lcd.setCursor(0, 1);
   lcd.print(line2);
+
+  Serial.println();
+  Serial.println("Screen:");
+  Serial.println("----------------");
+  Serial.println(line1);
+  Serial.println(line2);
+  Serial.println("----------------");
+  Serial.println();
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
