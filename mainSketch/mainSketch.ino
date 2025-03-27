@@ -12,9 +12,9 @@ Date: April 7, 2025
 #include <stdlib.h>
 
 // Thermocouple Digital IO Pins
-#define MAXDO   3
-#define MAXCS   4
-#define MAXCLK  5
+#define MAXDO   10
+#define MAXCS   11
+#define MAXCLK  12
 
 // Initialize the Thermocouple
 Adafruit_MAX31855 thermocouple(MAXCLK, MAXCS, MAXDO);
@@ -43,13 +43,14 @@ double speedInMin = 10.0; // TODO: Set as min speed
 double speedInSec = 10.0;
 bool returnEnabled = false;
 long stepsRotated = 0;
+const double inPerStep = 0.00026667;
 double disTraveled = 0.0;
 unsigned long startTime = 0;
 
 // Define encoder Pins
-#define CLK 2
-#define DT 3
-#define SW 4
+#define CLK 22
+#define DT 24
+#define SW 26
 
 // Encoder direction definitions
 #define DIRECTION_CW  0
@@ -81,9 +82,10 @@ void setup() {
   lcd.backlight();
 
   // Stepper Motor Setup
-  myStepper.setMaxSpeed(1000);
-  myStepper.setAcceleration(50);
+  myStepper.setMaxSpeed(10000);
+  myStepper.setAcceleration(10000);
   myStepper.setSpeed(200);
+  // myStepper.moveTo(200)
 
   // Setup Encoder
   pinMode(CLK, INPUT);
@@ -100,20 +102,38 @@ void setup() {
 
   // Set the starting height
   setDisplay("Set Starting", "Height.");
+  bool moving = false;
+  bool up = false;
   while (digitalRead(SW) == 1){
     CLKstate = digitalRead(CLK);
     if (CLKstate != prevCLKstate && CLKstate == 1){
       if (digitalRead(DT) == CLKstate){
+        if (myStepper.isRunning()){
+          if (!up){
+            myStepper.stop();
+          }
+        }
+        else{
+          up = true;
+        }
         Serial.println("Moved UP");
-        myStepper.move(200); //TODO: direction and amount
+        myStepper.moveTo(myStepper.targetPosition() - 200);
       }
       else{
+        if (myStepper.isRunning()){
+          if (up){
+            myStepper.stop();
+          }
+        }
+        else{
+          up = false;
+        }
         Serial.println("Moved Down");
-        myStepper.move(-200);
+        myStepper.moveTo(myStepper.targetPosition() + 200);
       }
-      myStepper.run();
     }
     prevCLKstate = CLKstate;
+    myStepper.run();
     delay(1);
   }
   Serial.println("Starting Height Set.");
@@ -225,21 +245,21 @@ void setup() {
   // Wait for enclosure to reach tempeture
   setDisplay("Heating", "Chamber");
   digitalWrite(RELAY, HIGH);
-  do{
-    actualTemp = thermocouple.readCelsius();
+  // do{
+  //   actualTemp = thermocouple.readCelsius();
 
-    // if (isnan(actualTemp)){
-    //   setDisplay("Thermocouple", "Error!");
-    //   while(1) delay(1000);
-    // }
+  //   // if (isnan(actualTemp)){
+  //   //   setDisplay("Thermocouple", "Error!");
+  //   //   while(1) delay(1000);
+  //   // }
 
-    Serial.print("Heating: ");
-    Serial.print(actualTemp);
-    Serial.println("C");
-  } while (actualTemp < goalTemp);
+  //   Serial.print("Heating: ");
+  //   Serial.print(actualTemp);
+  //   Serial.println("C");
+  // } while (actualTemp < goalTemp);
 
   setDisplay("Ready, Press to", "Start");
-  while (digitalRead(SW) == 1) maintainTemp();
+  // while (digitalRead(SW) == 1) maintainTemp();
   startTime = millis();
   Serial.print("Test Started.");
   delay(500);
@@ -269,25 +289,25 @@ void loop() {
 void maintainTemp(){
   actualTemp = thermocouple.readCelsius();
 
-  if (actualTemp >= goalTemp + 2.5){
-    digitalWrite(RELAY, HIGH);
-    Serial.println("Heating turned on.");
-  }
-  else if (actualTemp < goalTemp - 1.0){
-    digitalWrite(RELAY, LOW);
-    Serial.println("Heating turned off.");
-  }
+  // if (actualTemp >= goalTemp + 2.5){
+  //   digitalWrite(RELAY, HIGH);
+  //   Serial.println("Heating turned on.");
+  // }
+  // else if (actualTemp < goalTemp - 1.0){
+  //   digitalWrite(RELAY, LOW);
+  //   Serial.println("Heating turned off.");
+  // }
 }
 
 void maintainExpansion(long msPassed){
   double secPassed = msPassed / 1000.0;
   double correctDis = speedInSec * secPassed;
   if (correctDis > disTraveled){
-    myStepper.move(200); //TODO: Amount
-    myStepper.run();
-    disTraveled += 0.0; //TODO: FindAmount
+    myStepper.moveTo(myStepper.targetPosition() - 200); //TODO: Amount
+    disTraveled += (200 * inPerStep); //TODO: FindAmount
     stepsRotated += 200; //TODO: Match Amount
   }
+  myStepper.run();
 }
 
 void returnHome(){
