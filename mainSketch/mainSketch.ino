@@ -12,9 +12,9 @@ Date: April 7, 2025
 #include <stdlib.h>
 
 // Thermocouple Digital IO Pins
-#define MAXDO   10
-#define MAXCS   11
-#define MAXCLK  12
+#define MAXDO   7
+#define MAXCS   6
+#define MAXCLK  5
 
 // Initialize the Thermocouple
 Adafruit_MAX31855 thermocouple(MAXCLK, MAXCS, MAXDO);
@@ -28,8 +28,8 @@ const double maxTemp = 150.0; //TODO: Find Actual Max
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 // Stepper Motor Digital IO Pins
-const int dirPin = 2;
-const int stepPin = 3;
+const int dirPin = 9;
+const int stepPin =8;
 
 // Define Motor Interface
 #define motorInterfaceType 1
@@ -62,7 +62,7 @@ int CLKstate;
 int prevCLKstate;
 
 // Relay Pin
-#define RELAY 99
+#define RELAY 52
 
 
 // Boot squence and Pretest Setup ======================================================
@@ -245,18 +245,18 @@ void setup() {
   // Wait for enclosure to reach tempeture
   setDisplay("Heating", "Chamber");
   digitalWrite(RELAY, HIGH);
-  // do{
-  //   actualTemp = thermocouple.readCelsius();
+  do{
+    actualTemp = thermocouple.readCelsius();
 
-  //   // if (isnan(actualTemp)){
-  //   //   setDisplay("Thermocouple", "Error!");
-  //   //   while(1) delay(1000);
-  //   // }
+    if (isnan(actualTemp)){
+      setDisplay("Thermocouple", "Error!");
+      while(1) delay(1000);
+    }
 
-  //   Serial.print("Heating: ");
-  //   Serial.print(actualTemp);
-  //   Serial.println("C");
-  // } while (actualTemp < goalTemp);
+    Serial.print("Heating: ");
+    Serial.print(actualTemp);
+    Serial.println("C");
+  } while (actualTemp < goalTemp);
 
   setDisplay("Ready, Press to", "Start");
   // while (digitalRead(SW) == 1) maintainTemp();
