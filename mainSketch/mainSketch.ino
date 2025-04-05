@@ -37,7 +37,7 @@ const int stepPin =8;
 // Create Stepper Motor Instance
 AccelStepper myStepper(motorInterfaceType, stepPin, dirPin);
 
-// Motor Varibles
+// Motor Variables
 const double MaxSpeed = 10.0; // NOTE: Due to mechanical problems, this value could not be determined.
 double speedInMin = 10.0; 
 double speedInSec = 0.0;
@@ -56,7 +56,7 @@ unsigned long startTime = 0;
 #define DIRECTION_CW  0
 #define DIRECTION_CCW 1
 
-// Encoder Varibles
+// Encoder Variables
 int direction = DIRECTION_CW;
 int CLKstate;
 int prevCLKstate;
@@ -65,7 +65,7 @@ int prevCLKstate;
 #define RELAY 52
 
 
-// Boot squence and Pretest Setup ======================================================
+// Boot sequence and Pretest Setup ======================================================
 void setup() {
   Serial.begin(9600);
 
@@ -101,7 +101,7 @@ void setup() {
   actualTemp = thermocouple.readCelsius();
 
   // Set the starting height
-  setDisplay("Set Starting", "Height.");
+  setDisplay("Set Starting", "Height");
   bool moving = false;
   bool up = false;
   while (digitalRead(SW) == 1){
@@ -180,7 +180,7 @@ void setup() {
   Serial.println(" in/min");
   delay(500);
 
-  // //Converts speed tp in/sec
+  // //Converts speed to in/sec
   speedInSec = speedInMin / 60.0;
 
   setDisplay("Return Home?", "No");
@@ -209,7 +209,7 @@ void setup() {
   Serial.println("Door Close Confirmed.");
   delay(500);
 
-  // // Get the desired tempeture
+  // // Get the desired temperature
   setDisplay("Tempeture", "");
   while (digitalRead(SW) == 1){
     CLKstate = digitalRead(CLK);
@@ -242,7 +242,7 @@ void setup() {
   delay(500);
 
 
-  // Wait for enclosure to reach tempeture
+  // Wait for enclosure to reach temperature
   setDisplay("Heating", "Chamber");
   digitalWrite(RELAY, HIGH);
   do{
@@ -250,7 +250,14 @@ void setup() {
 
     if (isnan(actualTemp)){
       setDisplay("Thermocouple", "Error!");
-      while(1) delay(1000);
+      while(1){ 
+        delay(1000);
+        actualTemp = thermocouple.readCelsius();
+        if (!isnan(actualTemp)){
+          setDisplay("Heating", "Chamber");
+          break;
+        }
+      }
     }
 
     Serial.print("Heating: ");
@@ -289,14 +296,14 @@ void loop() {
 void maintainTemp(){
   actualTemp = thermocouple.readCelsius();
 
-  // if (actualTemp >= goalTemp + 2.5){
-  //   digitalWrite(RELAY, HIGH);
-  //   Serial.println("Heating turned on.");
-  // }
-  // else if (actualTemp < goalTemp - 1.0){
-  //   digitalWrite(RELAY, LOW);
-  //   Serial.println("Heating turned off.");
-  // }
+  if (actualTemp >= goalTemp + 2.5){
+    digitalWrite(RELAY, HIGH);
+    Serial.println("Heating turned on.");
+  }
+  else if (actualTemp < goalTemp - 1.0){
+    digitalWrite(RELAY, LOW);
+    Serial.println("Heating turned off.");
+  }
 }
 
 void maintainExpansion(long msPassed){
