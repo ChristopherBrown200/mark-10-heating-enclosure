@@ -38,9 +38,9 @@ const int stepPin =8;
 AccelStepper myStepper(motorInterfaceType, stepPin, dirPin);
 
 // Motor Varibles
-const double MaxSpeed = 70.0;
-double speedInMin = 10.0; // TODO: Set as min speed
-double speedInSec = 10.0;
+const double MaxSpeed = 10.0; // NOTE: Due to mechanical problems, this value could not be determined.
+double speedInMin = 10.0; 
+double speedInSec = 0.0;
 bool returnEnabled = false;
 long stepsRotated = 0;
 const double inPerStep = 0.00026667;
@@ -158,7 +158,7 @@ void setup() {
         }
       }
       else{
-        if (speedInMin > 0){
+        if (speedInMin > 0.1){
           speedInMin -= 0.1;
         }
       }
