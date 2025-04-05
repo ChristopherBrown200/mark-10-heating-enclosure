@@ -21,7 +21,7 @@ Adafruit_MAX31855 thermocouple(MAXCLK, MAXCS, MAXDO);
 
 double actualTemp = 0.0;
 int goalTemp = 70;
-const double maxTemp = 150.0; //TODO: Find Actual Max
+const double maxTemp = 34.0;
 
 
 // Display Setup
@@ -221,7 +221,7 @@ void setup() {
         direction = DIRECTION_CCW;
       }
       else {
-        if (goalTemp > 15){
+        if (goalTemp > 21){
           goalTemp -= 1;
         }
         direction = DIRECTION_CW;
